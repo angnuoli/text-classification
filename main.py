@@ -1,6 +1,7 @@
 import os
 from sys import argv
 import types
+import pickle
 
 from src.data_preprocess.preprocess import DataProcessor, Vectorizer
 from src.metric.metric import calculate_priority_by_tfidf
@@ -33,9 +34,20 @@ def data_preprocess(calculate_priority: types.FunctionType, vocabulary_size):
     #   Preprocessing
     # =============================================================================
     print("========== Parse data files ==========")
-    data_dir = os.path.abspath(data_dir)
-    data_processor = DataProcessor()
-    train_documents, test_documents = data_processor.data_preprocess(data_dir)
+    if os.path.isfile('data/train.pkl'):
+        with open('data/train.pkl', 'rb') as f:
+            train_documents = pickle.load(f)
+        with open('data/test.pkl', 'rb') as f:
+            test_documents = pickle.load(f)
+    else:
+        data_dir = os.path.abspath(data_dir)
+        data_processor = DataProcessor()
+        train_documents, test_documents = data_processor.data_preprocess(data_dir)
+        with open('data/train.pkl', 'wb') as f:
+            pickle.dump(train_documents, f)
+        with open('data/test.pkl', 'wb') as f:
+            pickle.dump(test_documents, f)
+
 
     # test_documents = test_documents[0:10]
     # binarize the class label to class vectors
