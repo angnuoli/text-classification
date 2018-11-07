@@ -4,7 +4,7 @@ import types
 
 from src.data_preprocess.preprocess import DataProcessor, Vectorizer
 from src.metric.metric import calculate_priority_by_tfidf
-
+from src.metric.transform_vector import *
 
 def data_preprocess(calculate_priority: types.FunctionType, vocabulary_size):
     """
@@ -51,3 +51,5 @@ def data_preprocess(calculate_priority: types.FunctionType, vocabulary_size):
 if __name__ == "__main__":
     train_documents, test_documents, vocabulary = data_preprocess(calculate_priority=calculate_priority_by_tfidf,
                                                     vocabulary_size=-1)
+    t = Transform(vocabulary)
+    t.get_feature(train_documents)
