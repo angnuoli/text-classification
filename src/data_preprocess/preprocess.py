@@ -7,14 +7,15 @@ import numbers
 import os
 import re
 import string
-import types
-
-import numpy as np
 
 from src.data_structure.data_structure import StaticData, Document
 from src.metric.metric import calculate_priority_by_tfidf
 import nltk
-nltk.download('punkt')
+
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt')
 
 from nltk.tokenize import word_tokenize
 from nltk.stem.porter import PorterStemmer
@@ -260,6 +261,9 @@ class DataProcessor:
         if len(topic_labels) == 0:
             return None
         document.class_list = list(topic_labels)
+
+        if len(document.class_list) <= 0 or len(document.words_list) <= 0:
+            return None
 
         # train or test
         document.train = re.search('lewissplit="train"', string=article) is not None
