@@ -63,5 +63,6 @@ def data_preprocess(calculate_priority: types.FunctionType, vocabulary_size):
 if __name__ == "__main__":
     train_documents, test_documents, vocabulary = data_preprocess(calculate_priority=calculate_priority_by_tfidf,
                                                     vocabulary_size=-1)
+    print(len(train_documents))
     t = Transform(vocabulary)
     t.get_feature(train_documents)
