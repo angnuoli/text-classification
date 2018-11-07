@@ -312,7 +312,7 @@ class DataProcessor:
         _test_documents = []
         bag_of_classes = set()
         for document in documents:
-            document: Document
+            # document: Document
             if len(document.class_list) > 0:
                 if document.train:
                     _train_documents.append(document)

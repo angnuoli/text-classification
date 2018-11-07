@@ -20,7 +20,7 @@ def calculate_priority_by_tfidf(documents: []) -> {}:
     tf = {}
 
     for document in documents:
-        document: Document
+        # document: Document
         terms = set(document.words_list)
         for term in terms:
             term_df[term] = term_df.get(term, 0) + 1
