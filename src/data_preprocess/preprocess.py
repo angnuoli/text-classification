@@ -13,6 +13,9 @@ import numpy as np
 
 from src.data_structure.data_structure import StaticData, Document
 from src.metric.metric import calculate_priority_by_tfidf
+import nltk
+nltk.download('punkt')
+
 from nltk.tokenize import word_tokenize
 from nltk.stem.porter import PorterStemmer
 
