@@ -1,3 +1,6 @@
+import numpy as np
+import sys
+
 class Transform:
 
     def __init__(self, vocab):
@@ -18,6 +21,10 @@ class Transform:
         vector_y = []
         for i in range(len(document_list)):
             print(i)
+                #if(i > 100):
+                #print(vector_x)
+                #print(vector_y)
+                #sys.exit()
             vector_x.append(self.vectorize_x(document_list[i]))
             vector_y.append(self.vectorize_y(document_list[i]))
         return vector_x, vector_y
