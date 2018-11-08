@@ -67,8 +67,9 @@ if __name__ == "__main__":
                                                     vocabulary_size=-1)
     #print(len(train_documents))
     t = Transform(vocabulary)
-    train_x, train_y = t.get_feature(train_documents)
-    test_x, test_y = t.get_feature(test_documents)
+    train_x, train_y = t.get_feature_tfidf(train_documents)
+    print(train_x)
+    test_x, test_y = t.get_feature_tfidf(test_documents)
     #svm
     model = svm.SVC(kernel='linear')
     model.fit(train_x, train_y)
