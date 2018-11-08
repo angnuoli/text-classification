@@ -41,3 +41,50 @@ def calculate_priority_by_tfidf(documents: []) -> {}:
         term_importance_pair[term] = calculate_tf_idf(tf[term], term_df[term], len(documents))
 
     return term_importance_pair
+
+def calculate_priority_by_chi_square(documents: []) -> {}:
+    """Calculate chi square metric to measure the importance of a term to a class.
+
+    :return:
+    """
+    term_importance_pair = {}
+    chi_2_term_class = {}
+    df_term_class = {}
+    df_term = {}
+    df_of_classes = {}
+    n_train_documents = len(documents)
+    classes = set()
+
+    for document in documents:
+        terms = set(document.words_list)
+        for term in terms:
+            df_term[term] = df_term.get(term, 0) + 1
+            if term not in df_term_class.keys():
+                df_term_class[term] = {}
+            
+            for label in document.class_list:
+                df_term_class[term][label] = df_term_class[term].get(label, 0) + 1
+                classes.add(label)
+        
+        for label in document.class_list:
+            df_of_classes[label] = df_of_classes.get(label, 0) + 1
+
+    for term in df_term_class.keys():
+        chi_2_term_class[term] = chi_2_term_class.get(term, {})
+        for label in df_term_class[term].keys():
+            A = df_term_class[term][label]
+
+            if A != 0:
+                B = df_term[term] - A
+                C = df_of_classes[label] - A
+                D = n_train_documents - A - B - C
+                N = A + B + C + D
+
+                chi_2_term_class[term][label] = (float(N) * (A * D - C * B) * (A * D - C * B)) \
+                                                 / ((A + C) * (B + D) * (A + B) * (C + D))
+            else:
+                chi_2_term_class[term][label] = 0.0
+
+            term_importance_pair[term] = max(term_importance_pair.get(term, 0), chi_2_term_class[term][label])
+        
+    return term_importance_pair

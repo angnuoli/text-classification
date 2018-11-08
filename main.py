@@ -4,7 +4,7 @@ import types
 import pickle
 
 from src.data_preprocess.preprocess import DataProcessor, Vectorizer
-from src.metric.metric import calculate_priority_by_tfidf
+from src.metric.metric import calculate_priority_by_tfidf, calculate_priority_by_chi_square
 from src.metric.transform_vector import *
 
 def data_preprocess(calculate_priority: types.FunctionType, vocabulary_size):
@@ -61,7 +61,7 @@ def data_preprocess(calculate_priority: types.FunctionType, vocabulary_size):
 
 
 if __name__ == "__main__":
-    train_documents, test_documents, vocabulary = data_preprocess(calculate_priority=calculate_priority_by_tfidf,
+    train_documents, test_documents, vocabulary = data_preprocess(calculate_priority=calculate_priority_by_chi_square,
                                                     vocabulary_size=-1)
     print(len(train_documents))
     t = Transform(vocabulary)
