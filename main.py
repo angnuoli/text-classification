@@ -3,6 +3,8 @@ from sys import argv
 import types
 import pickle
 
+from sklearn import svm
+from sklearn.metrics import accuracy_score
 from src.data_preprocess.preprocess import DataProcessor, Vectorizer
 from src.metric.metric import calculate_priority_by_tfidf
 from src.metric.transform_vector import *
@@ -63,6 +65,14 @@ def data_preprocess(calculate_priority: types.FunctionType, vocabulary_size):
 if __name__ == "__main__":
     train_documents, test_documents, vocabulary = data_preprocess(calculate_priority=calculate_priority_by_tfidf,
                                                     vocabulary_size=-1)
-    print(len(train_documents))
+    #print(len(train_documents))
     t = Transform(vocabulary)
-    t.get_feature(train_documents)
+    train_x, train_y = t.get_feature(train_documents)
+    test_x, test_y = t.get_feature(test_documents)
+    #svm
+    model = svm.SVC(kernel='linear')
+    model.fit(train_x, train_y)
+    predict_y = model.predict(test_x)
+    #accuracy
+    print(accuracy_score(test_y, predict_y))
+

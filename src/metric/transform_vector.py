@@ -21,7 +21,7 @@ class Transform:
         vector_y = []
         for i in range(len(document_list)):
             print(i)
-                #if(i > 100):
+            #if(i > 100):
                 #print(vector_x)
                 #print(vector_y)
                 #sys.exit()
