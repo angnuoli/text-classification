@@ -42,6 +42,24 @@ def calculate_priority_by_tfidf(documents: []) -> {}:
 
     return term_importance_pair
 
+def calculate_priority_by_tf(documents: []) -> {}:
+    term_tf = {}
+
+    for document in documents:
+        # document: Document
+        for term in document.words_list:
+            if term not in term_tf.keys():
+                term_tf[term] = {}
+
+            for class_ in document.class_list:
+                term_tf[term][class_] = term_tf[term].get(term, 0) + 1
+    
+    term_importance_pair = {}
+    for term in term_tf.keys():
+        term_importance_pair[term] = max(term_tf[term].values())
+
+    return term_importance_pair
+
 def calculate_priority_by_chi_square(documents: []) -> {}:
     """Calculate chi square metric to measure the importance of a term to a class.
 
