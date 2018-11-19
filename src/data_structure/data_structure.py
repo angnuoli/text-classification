@@ -14,6 +14,7 @@ class Document:
         self.text = ""
         self.words_list = []
         self.class_list = []
+        self.tf = {}
 
 
 class StaticData:

@@ -1,5 +1,4 @@
 import numpy as np
-from src.data_structure.data_structure import Document
 
 
 def calculate_tf_idf(tf, df, doc_num):
@@ -53,7 +52,7 @@ def calculate_priority_by_tf(documents: []) -> {}:
 
             for class_ in document.class_list:
                 term_tf[term][class_] = term_tf[term].get(term, 0) + 1
-    
+
     term_importance_pair = {}
     for term in term_tf.keys():
         term_importance_pair[term] = max(term_tf[term].values())
@@ -79,11 +78,11 @@ def calculate_priority_by_chi_square(documents: []) -> {}:
             df_term[term] = df_term.get(term, 0) + 1
             if term not in df_term_class.keys():
                 df_term_class[term] = {}
-            
+
             for label in document.class_list:
                 df_term_class[term][label] = df_term_class[term].get(label, 0) + 1
                 classes.add(label)
-        
+
         for label in document.class_list:
             df_of_classes[label] = df_of_classes.get(label, 0) + 1
 
@@ -104,5 +103,5 @@ def calculate_priority_by_chi_square(documents: []) -> {}:
                 chi_2_term_class[term][label] = 0.0
 
             term_importance_pair[term] = max(term_importance_pair.get(term, 0), chi_2_term_class[term][label])
-        
+
     return term_importance_pair
