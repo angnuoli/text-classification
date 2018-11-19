@@ -112,9 +112,9 @@ def run(filename, calculate_priority):
     # prepare document term frequency
     train_df = calculate_df(train_documents)
 
-    tuned_parameters = [{'kernel': ['rbf'], 'gamma': [1e-3, 1e-4], 'C': [1, 10, 100, 1000]}, {'kernel': ['linear'], 'C': [1, 10, 100, 1000]}]
+    tuned_parameters = [{'kernel': ['rbf'], 'gamma': [1e-3, 1e-4], 'C': [1, 10, 100]}, {'kernel': ['linear'], 'C': [1, 10, 100]}]
 
-    accuracy = svm_predict(train_documents, test_documents, vocabulary, train_df, tuned_parameters)
+    accuracy = svm_predict(train_documents, test_documents, vocabulary[0:3000], train_df, tuned_parameters)
 
 #    vocabulary_size = []
 #    accuracy = []
