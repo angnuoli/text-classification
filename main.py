@@ -4,13 +4,12 @@ import types
 import pickle
 
 from sklearn import svm
-from sklearn.metrics import accuracy_score
+from sklearn.model_selection import GridSearchCV
 from src.data_preprocess.preprocess import DataProcessor, Vectorizer
 from src.metric.metric import calculate_priority_by_tfidf, calculate_priority_by_tf
-from src.metric.transform_vector import *
+from src.metric.transform_vector import Transform
 import numpy as np
 import matplotlib.pyplot as plt
-import pylab
 import time
 
 def data_preprocess(calculate_priority: types.FunctionType, vocabulary_size):
@@ -66,66 +65,83 @@ def data_preprocess(calculate_priority: types.FunctionType, vocabulary_size):
     return train_documents, test_documents, vocabulary
 
 
-def calculate_tf_df(document_list):
+def calculate_df(document_list):
     df = {}
 
     for document in document_list:
-        for term in set(document.words_list):
+        for term in document.tf.keys():
             df[term] = df.get(term, 0) + 1
 
-        for term in document.words_list:
-            document.tf[term] = document.tf.get(term, 0) + 1
-
     return df
+
+def svm_predict(train_documents, test_documents, vocabulary, train_df, tuned_parameters):
+    t = Transform(vocabulary)
+
+    train_x, train_y = t.get_feature_tfidf_train(train_documents, train_df)
+    test_x = t.get_feature_tfidf_test(test_documents, train_df)
+
+    # train svm via cross validation
+    A = time.time()
+    clf = GridSearchCV(svm.SVC(), tuned_parameters, cv=5, scoring='precision_macro')
+    clf.fit(train_x, train_y)
+    print(time.time() - A)
+    print("Best parameters set found on development set:")
+    print(clf.best_params_)
+
+    means = clf.cv_results_['mean_test_score']
+    stds = clf.cv_results_['std_test_score']
+    for mean, std, params in zip(means, stds, clf.cv_results_['params']):
+        print("{:.3f} (+/-{:.3f}) for {}".format(mean, std * 2, params))
+
+    # test
+    predict_y = clf.predict(test_x)
+
+    sum_acc = 0
+    for j, pre in enumerate(predict_y):
+        if pre in test_documents[j].class_list:
+           sum_acc += 1
+
+    print(sum_acc / len(predict_y))
+    return sum_acc / len(predict_y)
+
 
 def run(filename, calculate_priority):
     train_documents, test_documents, vocabulary = data_preprocess(calculate_priority=calculate_priority_by_tfidf,
                                                     vocabulary_size=-1)
 
-    #print(len(train_documents))
-    vocabulary_size = []
-    accuracy = []
+    # prepare document term frequency
+    train_df = calculate_df(train_documents)
 
-    train_df = calculate_tf_df(train_documents)
-    test_df = calculate_tf_df(test_documents)
+    tuned_parameters = [{'kernel': ['rbf'], 'gamma': [1e-3, 1e-4], 'C': [1, 10, 100, 1000]}, {'kernel': ['linear'], 'C': [1, 10, 100, 1000]}]
 
-    b = np.log10(len(vocabulary)-100) / np.log10(300)
-    base = np.log10(300)
+    accuracy = svm_predict(train_documents, test_documents, vocabulary, train_df, tuned_parameters)
 
-    i = 1
-    model = svm.SVC()
-    while i <= b:
-        vocabulary_size.append(int(10 ** (i * base)))
-
-        print('vocabulary_size: {}'.format(vocabulary_size[-1]))
-        t = Transform(vocabulary[0:vocabulary_size[-1]])
-        train_x, train_y = t.get_feature_tfidf(train_documents, train_df)
-        #print(train_x)
-        test_x, test_y = t.get_feature_tfidf(test_documents, test_df)
-        #svm
-        A = time.time()
-        model.fit(train_x, train_y)
-        print(time.time() - A)
-        predict_y = model.predict(test_x)
-        #accuracy
-        sum_acc = 0
-        for j in range(len(predict_y)):
-            if predict_y[j] in test_documents[j].class_list:
-               sum_acc += 1
-
-        print(sum_acc / len(predict_y))
-        accuracy.append(sum_acc / len(predict_y))
-
-        i += (b-1)/10
-
-
-    plt.plot(vocabulary_size[6:], accuracy[2:], marker='x')
-    plt.xlabel('vocabulary_size')
-    plt.ylabel('accuracy')
-    plt.title('classification accuracy with respect to different vocabulary_size')
-    plt.savefig('fig{}.svg'.format(filename))
+#    vocabulary_size = []
+#    accuracy = []
+#
+#    b = np.log10(len(vocabulary)-100) / np.log10(300)
+#    base = np.log10(300)
+#
+#    i = 1
+#    while i <= b:
+#        vocabulary_size.append(int(10 ** (i * base)))
+#
+#        print('vocabulary_size: {}'.format(vocabulary_size[-1]))
+#
+#        accuracy.append(sum_acc / len(predict_y))
+#
+#        i += (b-1)/10
+#
+#
+#    plt.plot(vocabulary_size, accuracy, marker='x')
+#    plt.xlabel('vocabulary_size')
+#    plt.ylabel('accuracy')
+#    plt.title('classification accuracy with respect to different vocabulary_size')
+#    plt.savefig('cur-fig{}.svg'.format(filename))
+    with open('file{}.txt'.format(filename), 'w') as f:
+        f.writelines('{}'.format(accuracy))
 
 if __name__ == "__main__":
 
-    run(2, calculate_priority_by_tf)
+    #run(2, calculate_priority_by_tf)
     run(3, calculate_priority_by_tfidf)

@@ -87,9 +87,7 @@ class Vectorizer:
         min_doc_count = (min_df
                          if isinstance(min_df, numbers.Integral)
                          else min_df * n_doc)
-        if max_doc_count < min_doc_count:
-            raise ValueError(
-                "max_df corresponds to < documents than min_df")
+        assert min_doc_count < max_doc_count
 
         print("\n========== Feature selection ==========")
         term_importance_pair = calculate_priority(raw_documents)
@@ -213,9 +211,11 @@ class DataProcessor:
         pass
 
     def convert_text_to_word_list(self, text: str) -> []:
+        """ Return words list and term frequncy """
 
         word_tokens = word_tokenize(text)
         tokens = []
+        tf = {}
         for word in word_tokens:
             # remove punctturation and stop word
             if re.compile(r'[a-z]').search(word) is None or word in DataProcessor.stop_words_ or len(word) <= 3:
@@ -227,7 +227,10 @@ class DataProcessor:
                 continue
             tokens.append(word)
 
-        return tokens
+            # count term frequency
+            tf[word] = tf.get(word, 0) + 1
+
+        return tokens, tf
 
 
     def parse_article(self, article: str) -> Document:
@@ -241,8 +244,7 @@ class DataProcessor:
         """
         document = Document()
 
-        # extract word list
-
+        # extract text body
         text_compile = re.compile('<text.*?</text>', re.DOTALL).search(article)
         if text_compile is None:
             return None
@@ -251,19 +253,20 @@ class DataProcessor:
 
         text = re.sub(pattern='</?[a-z]*?>', repl='', string=text)
         document.text = text
-        document.words_list = self.convert_text_to_word_list(text)
+
+        # extract words list and term frequency
+        document.words_list, document.tf = self.convert_text_to_word_list(text)
+        if len(document.words_list) <= 0:
+            return None
 
         # extract class label
         topic_labels = set()
         for topics in re.compile('<topics.*?</topics>').findall(article):
             for topic in re.compile('<d>[a-z]*?</d>').findall(topics):
                 topic_labels.add(re.sub(pattern='</?d>', repl='', string=topic))
-        if len(topic_labels) == 0:
+        if len(topic_labels) <= 0:
             return None
         document.class_list = list(topic_labels)
-
-        if len(document.class_list) <= 0 or len(document.words_list) <= 0:
-            return None
 
         # train or test
         document.train = re.search('lewissplit="train"', string=article) is not None
@@ -274,7 +277,7 @@ class DataProcessor:
         """ Extract documents from raw data.
 
         Args:
-            @data: raw data read from .sgn file.
+            @data: raw data read from .sgm file.
 
         Returns:
             A list of document.
@@ -282,25 +285,26 @@ class DataProcessor:
 
         documents = []
         filecount = 0
-        for file in os.listdir(directory):
-            # open each .sgm
 
-            if file.startswith('reut2'):
-                filecount = filecount + 1
-                print('Processing file {}...'.format(filecount))
+        # open each .sgm
+        with os.scandir(directory) as it:
+            for entry in it:
+                if entry.name.startswith('reut2') and entry.is_file():
+                    filecount += 1
+                    print('Processing file {}...'.format(filecount))
 
-                with open(directory + '/' + file, 'rb') as datafile:
-                    data = datafile.read().decode('utf8', 'ignore')
-                    soup = re.compile('<REUTERS.*?</REUTERS>', re.DOTALL)
-                    for article in soup.findall(data):
-                        document = self.parse_article(article.lower())
-                        if document is not None:
-                            documents.append(document)
+                    with open(entry.path, 'rb') as datafile:
+                        data = datafile.read().decode('utf8', 'ignore')
+                        soup = re.compile('<REUTERS.*?</REUTERS>', re.DOTALL)
+                        for article in soup.findall(data):
+                            document = self.parse_article(article.lower())
+                            if document is not None:
+                                documents.append(document)
 
-                print('Finished processing file {}...'.format(filecount))
+                    print('Finished processing file {}...'.format(filecount))
 
-            if filecount == 0:
-                raise OSError('No data file detected. Please make sure the filename start with "reut2".')
+                    assert filecount != 0
+
         return documents
 
     def data_preprocess(self, directory: str):
@@ -316,19 +320,15 @@ class DataProcessor:
         _test_documents = []
         bag_of_classes = set()
         for document in documents:
-            # document: Document
-            if len(document.class_list) > 0:
-                if document.train:
-                    _train_documents.append(document)
-                    bag_of_classes = bag_of_classes.union(document.class_list)
-                else:
-                    _test_documents.append(document)
+            if document.train:
+                _train_documents.append(document)
+                bag_of_classes = bag_of_classes.union(document.class_list)
+            else:
+                _test_documents.append(document)
 
         StaticData.bag_of_classes = bag_of_classes
-        StaticData.n_train_documents = len(_train_documents)
-        StaticData.n_classes = len(bag_of_classes)
 
-        print("Finish constructing TOPIC list. You can see the TOPIC_list.csv file in /output.")
+        print("Finish constructing TOPIC list.")
 
         return _train_documents, _test_documents
 

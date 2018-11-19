@@ -21,7 +21,3 @@ class StaticData:
     """ Static Count """
     # set of classes, class -> document frequency, initialized in data_preprocess
     bag_of_classes = set()
-
-    # number of train documents, initialized in data_preprocess
-    n_train_documents = 0
-    n_classes = 0.0

@@ -1,14 +1,13 @@
 import numpy as np
 
-from sklearn.feature_extraction.text import TfidfVectorizer
 from src.metric.metric import calculate_tf_idf
 class Transform:
 
     def __init__(self, vocab):
         self.vocab = vocab
         self.map = {}
-        for i in range(len(vocab)):
-            self.map[vocab[i]] = i
+        for i, word in enumerate(vocab):
+            self.map[word] = i
 
     def vectorize_x(self, document):
         x = []
@@ -35,23 +34,43 @@ class Transform:
             vector_y.append(self.vectorize_y(document_list[i]))
         return vector_x, vector_y
 
-    def get_feature_tfidf(self, document_list, df):
-        x = []
-        self.df = df
-        y = []
+    def get_feature_tfidf_train(self, document_list, df):
+        x, y = [], []
+        n = len(document_list)
+        count_label = {}
 
         for document in document_list:
-            #print(i)
-            x.append(self.cal_dfidf(document, document_list))
-            y.append(self.vectorize_y(document))
-            #print(x)
-        return x, y
+            tmp_x = self.cal_tfidf(document, df, n)
+            # partition multiple labels in multiple single-label training element
+            for class_label in document.class_list:
+                x.append(tmp_x)
+                y.append(class_label)
+                count_label[class_label] = count_label.get(class_label, 0) + 1
 
-    def cal_dfidf(self, document, document_list):
+        tx, ty = [], []
+        for i, class_label in enumerate(y):
+            if count_label[class_label] >= 5:
+                tx.append(x[i])
+                ty.append(y[i])
+
+        return tx, ty
+
+    def get_feature_tfidf_test(self, document_list, df):
+        x = []
+        n = len(document_list)
+
+        for document in document_list:
+            tmp_x = self.cal_tfidf(document, df, n)
+            # partition multiple labels in multiple single-label training element
+            x.append(tmp_x)
+
+        return x
+
+    def cal_tfidf(self, document, df, n):
         x = np.zeros(len(self.vocab))
-        for term in set(document.words_list):
+        for term in document.tf.keys():
             if term in self.map.keys():
                 j = self.map[term]
-                x[j] = calculate_tf_idf(document.tf[term], self.df[term], len(document_list))
+                x[j] = calculate_tf_idf(document.tf[term], df[term], n)
 
         return x.tolist()
