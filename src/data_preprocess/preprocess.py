@@ -323,7 +323,10 @@ class DataProcessor:
             if document.train:
                 _train_documents.append(document)
                 bag_of_classes = bag_of_classes.union(document.class_list)
-            else:
+
+        # remove unseen category test documents
+        for document in documents:
+            if not document.train and len(set(document.class_list).intersection(bag_of_classes)) > 0:
                 _test_documents.append(document)
 
         StaticData.bag_of_classes = bag_of_classes

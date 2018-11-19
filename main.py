@@ -5,12 +5,14 @@ import pickle
 
 from sklearn import svm
 from sklearn.model_selection import GridSearchCV
+from sklearn.externals import joblib
 from src.data_preprocess.preprocess import DataProcessor, Vectorizer
 from src.metric.metric import calculate_priority_by_tfidf, calculate_priority_by_tf
 from src.metric.transform_vector import Transform
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+import datetime
 
 def data_preprocess(calculate_priority: types.FunctionType, vocabulary_size):
     """
@@ -93,6 +95,16 @@ def svm_predict(train_documents, test_documents, vocabulary, train_df, tuned_par
     for mean, std, params in zip(means, stds, clf.cv_results_['params']):
         print("{:.3f} (+/-{:.3f}) for {}".format(mean, std * 2, params))
 
+    # save model
+    save_model(clf, 'vocabulary-{}-{}'.format(len(vocabulary), datetime.datetime.now()))
+
+    # test
+    acc = cal_predict_accuracy(clf, test_x, test_documents)
+    print(acc)
+    return acc
+
+
+def cal_predict_accuracy(clf, test_x, test_documents):
     # test
     predict_y = clf.predict(test_x)
 
@@ -105,43 +117,64 @@ def svm_predict(train_documents, test_documents, vocabulary, train_df, tuned_par
     return sum_acc / len(predict_y)
 
 
-def run(filename, calculate_priority):
+def save_model(model, filename):
+    joblib.dump(model, 'running_result/{}.joblib'.format(filename))
+
+
+def run(calculate_priority):
     train_documents, test_documents, vocabulary = data_preprocess(calculate_priority=calculate_priority_by_tfidf,
                                                     vocabulary_size=-1)
 
     # prepare document term frequency
     train_df = calculate_df(train_documents)
 
+    # cross_validation
     tuned_parameters = [{'kernel': ['rbf'], 'gamma': [1e-3, 1e-4], 'C': [1, 10, 100]}, {'kernel': ['linear'], 'C': [1, 10, 100]}]
 
-    accuracy = svm_predict(train_documents, test_documents, vocabulary[0:3000], train_df, tuned_parameters)
+# =============================================================================
+#  Pipeline:
+#
+#     t = Transform(vocabulary[0:10000])
+#
+#     train_x, train_y = t.get_feature_tfidf_train(train_documents, train_df)
+#     test_x = t.get_feature_tfidf_test(test_documents, train_df)
+#
+#     clf = svm.SVC()
+#     clf.fit(train_x, train_y)
+#     save_model(clf, filename='vocabulary-{}'.format(10000))
+#
+#     acc = cal_predict_accuracy(clf, test_x, test_documents)
+#     print(acc)
+# =============================================================================
 
-#    vocabulary_size = []
-#    accuracy = []
-#
-#    b = np.log10(len(vocabulary)-100) / np.log10(300)
-#    base = np.log10(300)
-#
-#    i = 1
-#    while i <= b:
-#        vocabulary_size.append(int(10 ** (i * base)))
-#
-#        print('vocabulary_size: {}'.format(vocabulary_size[-1]))
-#
-#        accuracy.append(sum_acc / len(predict_y))
-#
-#        i += (b-1)/10
-#
-#
-#    plt.plot(vocabulary_size, accuracy, marker='x')
-#    plt.xlabel('vocabulary_size')
-#    plt.ylabel('accuracy')
-#    plt.title('classification accuracy with respect to different vocabulary_size')
-#    plt.savefig('cur-fig{}.svg'.format(filename))
-    with open('file{}.txt'.format(filename), 'w') as f:
+    vocabulary_size = []
+    accuracy = []
+
+    b = np.log10(len(vocabulary)-100) / np.log10(300)
+    base = np.log10(300)
+
+    i = 1
+    while i <= b:
+        vocabulary_size.append(int(10 ** (i * base)))
+
+        print('vocabulary_size: {}'.format(vocabulary_size[-1]))
+
+        acc = svm_predict(train_documents, test_documents, vocabulary[0:vocabulary_size[-1]], train_df, tuned_parameters)
+
+        accuracy.append(acc)
+
+        i += (b-1)/10
+
+    plt.plot(vocabulary_size, accuracy, marker='x')
+    plt.xlabel('vocabulary_size')
+    plt.ylabel('accuracy')
+    plt.title('classification accuracy with respect to different vocabulary_size')
+    plt.savefig('running_result/cur-fig{}.svg'.format(datetime.datetime.now()))
+    with open('running_result/file{}.txt'.format(datetime.datetime.now()), 'w') as f:
+        f.writelines('{}'.format(vocabulary_size))
         f.writelines('{}'.format(accuracy))
 
 if __name__ == "__main__":
 
     #run(2, calculate_priority_by_tf)
-    run(3, calculate_priority_by_tfidf)
+    run(calculate_priority_by_tfidf)

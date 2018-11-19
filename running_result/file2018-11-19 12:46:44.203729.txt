@@ -1,0 +1,16 @@
+  'precision', 'predicted', average, warn_for)
+/Users/gjxhlan/anaconda3/lib/python3.7/site-packages/sklearn/metrics/classification.py:1135: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 in labels with no predicted samples.
+  'precision', 'predicted', average, warn_for)
+18675.048578977585
+Best parameters set found on development set:
+{'C': 100, 'gamma': 0.0001, 'kernel': 'rbf'}
+0.374 (+/-0.046) for {'C': 1, 'gamma': 0.001, 'kernel': 'rbf'}
+0.193 (+/-0.024) for {'C': 1, 'gamma': 0.0001, 'kernel': 'rbf'}
+0.446 (+/-0.053) for {'C': 10, 'gamma': 0.001, 'kernel': 'rbf'}
+0.437 (+/-0.073) for {'C': 10, 'gamma': 0.0001, 'kernel': 'rbf'}
+0.424 (+/-0.059) for {'C': 100, 'gamma': 0.001, 'kernel': 'rbf'}
+0.447 (+/-0.035) for {'C': 100, 'gamma': 0.0001, 'kernel': 'rbf'}
+0.409 (+/-0.036) for {'C': 1, 'kernel': 'linear'}
+0.409 (+/-0.038) for {'C': 10, 'kernel': 'linear'}
+0.409 (+/-0.038) for {'C': 100, 'kernel': 'linear'}
+0.8330849478390462
