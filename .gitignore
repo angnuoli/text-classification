@@ -1,2 +1,6 @@
 __pycache__
 .vscode
+
+*.ipynb
+!vocabulary+nn.ipynb
+.ipynb_checkpoints/

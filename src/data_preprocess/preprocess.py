@@ -7,6 +7,7 @@ import numbers
 import os
 import re
 import string
+import pickle
 
 from src.data_structure.data_structure import StaticData, Document
 from src.metric.metric import calculate_priority_by_tfidf
@@ -56,8 +57,7 @@ class Vectorizer:
 
     def generate_bag_of_words(self,
             raw_documents: [],
-            calculate_priority = calculate_priority_by_tfidf,
-            vocabulary_size = -1) -> []:
+            calculate_priority = calculate_priority_by_tfidf) -> []:
         """Learn the vocabulary dictionary and return vocabulary set.
 
         Parameters
@@ -70,8 +70,6 @@ class Vectorizer:
             (raw_documents) -> {term: importance}
 
             default use document frequency as importance metric.
-
-        vocabulary_size: top n important words.
 
         Returns
         -------
@@ -101,9 +99,6 @@ class Vectorizer:
 
         if len(vocabulary) == 0:
             print("Warning! After pruning, no terms remain. Try a lower min_df or a higher max_df.")
-
-        if vocabulary_size >= 0 and vocabulary_size < len(vocabulary):
-            return vocabulary[0:vocabulary_size]
 
         return vocabulary
 
@@ -273,6 +268,7 @@ class DataProcessor:
 
         return document
 
+    
     def extract_documents(self, directory: str) -> []:
         """ Extract documents from raw data.
 
@@ -307,31 +303,41 @@ class DataProcessor:
 
         return documents
 
-    def data_preprocess(self, directory: str):
-        """ Read data from the /data folder. Transform the data to a list of documents. Generate feature vectors for documents.
 
-        In this case, I choose unique terms to construct feature vector.
+    def get_train_and_test_documents(self):
+        """ Read data from the data/ folder. Transform the data to a list of documents.
 
+            Return
+            ------------
+            train_documents: list of Document object
+            test_documents: list of Document object
         """
-        # generate list of document objects for constructing feature vector
-        documents = self.extract_documents(directory)
-        print("\n========== Construct a list of TOPIC words ==========")
-        _train_documents = []
-        _test_documents = []
-        bag_of_classes = set()
-        for document in documents:
-            if document.train:
-                _train_documents.append(document)
-                bag_of_classes = bag_of_classes.union(document.class_list)
 
-        # remove unseen category test documents
-        for document in documents:
-            if not document.train and len(set(document.class_list).intersection(bag_of_classes)) > 0:
-                _test_documents.append(document)
+        data_dir = 'data/'
+        if not os.path.exists(data_dir):
+            raise OSError('Please store original data files in data/ directory')
 
-        StaticData.bag_of_classes = bag_of_classes
-
-        print("Finish constructing TOPIC list.")
-
-        return _train_documents, _test_documents
-
+        if os.path.isfile('data/train.pkl'):
+            print("========== Extract data from pickle files ==========")
+            with open('data/train.pkl', 'rb') as f:
+                train_documents = pickle.load(f)
+            with open('data/test.pkl', 'rb') as f:
+                test_documents = pickle.load(f)
+            
+        else:
+            print("========== Parse data files ==========")
+            documents = self.extract_documents(data_dir)
+            train_documents, test_documents = [], []
+            
+            for document in documents:
+                if document.train:
+                    train_documents.append(document)
+                else: 
+                    test_documents.append(document)
+            
+            with open('data/train.pkl', 'wb') as f:
+                pickle.dump(train_documents, f)
+            with open('data/test.pkl', 'wb') as f:
+                pickle.dump(test_documents, f)
+                
+        return train_documents, test_documents

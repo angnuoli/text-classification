@@ -17,6 +17,7 @@ def calculate_priority_by_tfidf(documents: []) -> {}:
     term_df = {}
     term_tf = {}
     tf = {}
+    min_count = 4
 
     for document in documents:
         # document: Document
@@ -33,11 +34,13 @@ def calculate_priority_by_tfidf(documents: []) -> {}:
 
     for class_ in term_tf.keys():
         for term, v in term_tf[class_].items():
-            tf[term] = max(tf.get(term, 0), v)
+            if v >= min_count:
+                tf[term] = tf.get(term, 0) + v
 
     term_importance_pair = {}
-    for term in term_df.keys():
-        term_importance_pair[term] = calculate_tf_idf(tf[term], term_df[term], len(documents))
+    _n = len(documents)
+    for term in tf.keys():
+        term_importance_pair[term] = calculate_tf_idf(tf[term], term_df[term], _n)
 
     return term_importance_pair
 
@@ -105,3 +108,24 @@ def calculate_priority_by_chi_square(documents: []) -> {}:
             term_importance_pair[term] = max(term_importance_pair.get(term, 0), chi_2_term_class[term][label])
 
     return term_importance_pair
+
+
+def cal_predict_accuracy(y_pred, test_documents):
+    # test
+    sum_acc = 0
+    for j, pre in enumerate(y_pred):
+        if pre in test_documents[j].class_list:
+           sum_acc += 1
+
+    print(sum_acc / len(y_pred))
+    return sum_acc / len(y_pred)
+
+
+def calculate_df(document_list):
+    df = {}
+
+    for document in document_list:
+        for term in document.tf.keys():
+            df[term] = df.get(term, 0) + 1
+
+    return df
