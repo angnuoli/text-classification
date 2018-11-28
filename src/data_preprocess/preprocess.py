@@ -217,9 +217,9 @@ class DataProcessor:
                 continue
 
             # stem
-            word = self.stemmer.stem(word)
-            if len(word) <= 3:
-                continue
+#             word = self.stemmer.stem(word)
+#             if len(word) <= 3:
+#                 continue
             tokens.append(word)
 
             # count term frequency

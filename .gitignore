@@ -4,3 +4,4 @@ __pycache__
 *.ipynb
 !vocabulary+nn.ipynb
 .ipynb_checkpoints/
+model/
