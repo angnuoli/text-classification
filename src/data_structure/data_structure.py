@@ -12,12 +12,4 @@ class Document:
     def __init__(self):
         self.title = ""
         self.text = ""
-        self.words_list = []
         self.class_list = []
-        self.tf = {}
-
-
-class StaticData:
-    """ Static Count """
-    # set of classes, class -> document frequency, initialized in data_preprocess
-    bag_of_classes = set()

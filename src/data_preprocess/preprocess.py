@@ -9,108 +9,142 @@ import re
 import string
 import pickle
 
-from src.data_structure.data_structure import StaticData, Document
+from src.data_structure.data_structure import Document
 from src.metric.metric import calculate_priority_by_tfidf
 import nltk
-
-try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt')
-
 from nltk.tokenize import word_tokenize
 from nltk.stem.porter import PorterStemmer
 
-class Vectorizer:
-    """Convert a collection of text documents to a matrix of token counts.
+class DataSet:
+    """ Class DataSet for get data from reuter-21578.
 
-    Parameters
-    ----------
-    max_df : float in range [0.0, 1.0] or int, default=1.0
-        When building the vocabulary ignore terms that have a document
-        frequency strictly higher than the given threshold (corpus-specific
-        stop words).
-        If float, the parameter represents a proportion of documents, integer
-        absolute counts.
-        This parameter is ignored if vocabulary is not None.
-
-    min_df : float in range [0.0, 1.0] or int, default=1
-        When building the vocabulary ignore terms that have a document
-        frequency strictly lower than the given threshold. This value is also
-        called cut-off in the literature.
-        If float, the parameter represents a proportion of documents, integer
-        absolute counts.
-        This parameter is ignored if vocabulary is not None.
-
-    max_features : int or None, default=None
-        If not None, build a vocabulary that only consider the top
-        max_features ordered by term frequency across the corpus.
-
-        This parameter is ignored if vocabulary is not None.
+    get_train_and_test_documents(): get the data, return x_train, y_train, x_test, y_test
     """
 
-    def __init__(self, max_df=0.9, min_df=3, max_features=None):
-        self.max_df = max_df
-        self.min_df = min_df
-        self.max_features = max_features
+    def parse_article(self, article: str) -> Document:
+        """ Parse the article to generate a document object.
 
+        Args:
+            @article: represent an article.
 
-    def generate_bag_of_words(self,
-            raw_documents: [],
-            calculate_priority = calculate_priority_by_tfidf) -> []:
-        """Learn the vocabulary dictionary and return vocabulary set.
-
-        Parameters
-        ----------
-        raw_documents : list of Document object
-
-        calculate_priority : self define function to calculate term - importance pair.
-            it must follow the formula
-
-            (raw_documents) -> {term: importance}
-
-            default use document frequency as importance metric.
-
-        Returns
-        -------
-        list of words sorted by importance.
+        Returns:
+            A document instance.
         """
-        max_df = self.max_df
-        min_df = self.min_df
+        document = Document()
 
-        n_doc = len(raw_documents)
-        max_doc_count = (max_df
-                         if isinstance(max_df, numbers.Integral)
-                         else max_df * n_doc)
-        min_doc_count = (min_df
-                         if isinstance(min_df, numbers.Integral)
-                         else min_df * n_doc)
-        assert min_doc_count < max_doc_count
+        # extract text body
+        text_compile = re.compile('<text.*?</text>', re.DOTALL).search(article)
+        if text_compile is None:
+            return None
+        else:
+            text = text_compile.group(0)
 
-        print("\n========== Feature selection ==========")
-        term_importance_pair = calculate_priority(raw_documents)
-        temp = []
-        for term, value in term_importance_pair.items():
-            temp.append([term, value])
+        text = re.sub(pattern='</?[a-z]*?>', repl='', string=text)
+        document.text = text
 
-        print("Sort terms by importance...")
-        temp = sorted(temp, key=lambda pair: pair[1], reverse=True)
-        vocabulary = [item[0] for item in temp]
+        # extract class label
+        topic_labels = set()
+        for topics in re.compile('<topics.*?</topics>').findall(article):
+            for topic in re.compile('<d>[a-z]*?</d>').findall(topics):
+                topic_labels.add(re.sub(pattern='</?d>', repl='', string=topic))
+        if len(topic_labels) <= 0:
+            return None
+        document.class_list = list(topic_labels)
 
-        if len(vocabulary) == 0:
-            print("Warning! After pruning, no terms remain. Try a lower min_df or a higher max_df.")
+        # train or test
+        document.train = re.search('lewissplit="train"', string=article) is not None
 
-        return vocabulary
+        return document
+
+    
+    def extract_documents(self, directory: str) -> []:
+        """ Extract documents from raw data.
+
+        Args:
+            @data: raw data read from .sgm file.
+
+        Returns:
+            A list of document.
+        """
+
+        documents = []
+        filecount = 0
+
+        # open each .sgm
+        for entry in os.scandir(directory):
+            if entry.name.startswith('reut2') and entry.is_file():
+                filecount += 1
+                print('Processing file {}...'.format(filecount))
+
+                with open(entry.path, 'rb') as datafile:
+                    data = datafile.read().decode('utf8', 'ignore')
+                    soup = re.compile('<REUTERS.*?</REUTERS>', re.DOTALL)
+                    for article in soup.findall(data):
+                        document = self.parse_article(article.lower())
+                        if document is not None:
+                            documents.append(document)
+
+                print('Finished processing file {}...'.format(filecount))
+
+                assert filecount != 0
+
+        return documents
 
 
-class DataProcessor:
-    """ Class DataProcessor for data pre-processing.
+    def get_train_and_test_documents(self):
+        """ Read data from the data/ folder. Transform the data to a list of documents.
 
-    data_preprocess(): pre-process the raw data into feature vectors
-    """
+            Return
+            ------------
+            x_train: list of string
+            y_train: list of labels
+            x_test: list of string
+            y_test: list of labels
+        """
 
-    remove_table = str.maketrans('', '', string.digits + string.punctuation)
-    stop_words_ = frozenset(["a", "a's", "able", "about", "above", "according", "accordingly", "across", "actually",
+        data_dir = 'data/'
+        if not os.path.exists(data_dir):
+            raise OSError('Please store original data files in data/ directory')
+
+        if os.path.isfile('data/train.pkl'):
+            print("========== Extract data from pickle files ==========")
+            with open('data/train.pkl', 'rb') as f:
+                train_documents = pickle.load(f)
+            with open('data/test.pkl', 'rb') as f:
+                test_documents = pickle.load(f)
+        else:
+            print("========== Parse data files ==========")
+            documents = self.extract_documents(data_dir)
+            train_documents, test_documents = [], []
+            
+            for document in documents:
+                if document.train:
+                    train_documents.append(document)
+                else: 
+                    test_documents.append(document)
+            
+            with open('data/train.pkl', 'wb') as f:
+                pickle.dump(train_documents, f)
+            with open('data/test.pkl', 'wb') as f:
+                pickle.dump(test_documents, f)
+        
+        x_train = []
+        y_train = []
+        x_test = []
+        y_test = []
+
+        for document in train_documents:
+            x_train.append(document.text)
+            y_train.append(document.class_list)
+
+        for document in test_documents:
+            x_test.append(document.text)
+            y_test.append(document.class_list)
+
+        return x_train, y_train, x_test, y_test
+
+
+stop_words_ = frozenset(["a", "a's", "able", "about", "above", "according", "accordingly", "across", "actually",
                              "after", "afterwards", "again", "against", "ain't", "all", "allow", "allows", "almost",
                              "alone", "along", "already", "also", "although", "always", "am", "among", "amongst", "an",
                              "and", "another", "any", "anybody", "anyhow", "anyone", "anything", "anyway", "anyways",
@@ -198,146 +232,3 @@ class DataProcessor:
                              "yes",
                              "yet", "you", "you'd", "you'll", "you're", "you've", "your", "yours", "yourself",
                              "yourselves", "z", "zero"])
-
-    def __init__(self):
-        # variables for removing stop words, digits, punctuation
-        # two class labels are dictionary, key is class, value is list of documents
-        self.stemmer = PorterStemmer()
-        pass
-
-    def convert_text_to_word_list(self, text: str) -> []:
-        """ Return words list and term frequncy """
-
-        word_tokens = word_tokenize(text)
-        tokens = []
-        tf = {}
-        for word in word_tokens:
-            # remove punctturation and stop word
-            if re.compile(r'[a-z]').search(word) is None or word in DataProcessor.stop_words_ or len(word) <= 3:
-                continue
-
-            # stem
-#             word = self.stemmer.stem(word)
-#             if len(word) <= 3:
-#                 continue
-            tokens.append(word)
-
-            # count term frequency
-            tf[word] = tf.get(word, 0) + 1
-
-        return tokens, tf
-
-
-    def parse_article(self, article: str) -> Document:
-        """ Parse the article to generate a document object.
-
-        Args:
-            @article: represent an article.
-
-        Returns:
-            A document instance.
-        """
-        document = Document()
-
-        # extract text body
-        text_compile = re.compile('<text.*?</text>', re.DOTALL).search(article)
-        if text_compile is None:
-            return None
-        else:
-            text = text_compile.group(0)
-
-        text = re.sub(pattern='</?[a-z]*?>', repl='', string=text)
-        document.text = text
-
-        # extract words list and term frequency
-        document.words_list, document.tf = self.convert_text_to_word_list(text)
-        if len(document.words_list) <= 0:
-            return None
-
-        # extract class label
-        topic_labels = set()
-        for topics in re.compile('<topics.*?</topics>').findall(article):
-            for topic in re.compile('<d>[a-z]*?</d>').findall(topics):
-                topic_labels.add(re.sub(pattern='</?d>', repl='', string=topic))
-        if len(topic_labels) <= 0:
-            return None
-        document.class_list = list(topic_labels)
-
-        # train or test
-        document.train = re.search('lewissplit="train"', string=article) is not None
-
-        return document
-
-    
-    def extract_documents(self, directory: str) -> []:
-        """ Extract documents from raw data.
-
-        Args:
-            @data: raw data read from .sgm file.
-
-        Returns:
-            A list of document.
-        """
-
-        documents = []
-        filecount = 0
-
-        # open each .sgm
-        with os.scandir(directory) as it:
-            for entry in it:
-                if entry.name.startswith('reut2') and entry.is_file():
-                    filecount += 1
-                    print('Processing file {}...'.format(filecount))
-
-                    with open(entry.path, 'rb') as datafile:
-                        data = datafile.read().decode('utf8', 'ignore')
-                        soup = re.compile('<REUTERS.*?</REUTERS>', re.DOTALL)
-                        for article in soup.findall(data):
-                            document = self.parse_article(article.lower())
-                            if document is not None:
-                                documents.append(document)
-
-                    print('Finished processing file {}...'.format(filecount))
-
-                    assert filecount != 0
-
-        return documents
-
-
-    def get_train_and_test_documents(self):
-        """ Read data from the data/ folder. Transform the data to a list of documents.
-
-            Return
-            ------------
-            train_documents: list of Document object
-            test_documents: list of Document object
-        """
-
-        data_dir = 'data/'
-        if not os.path.exists(data_dir):
-            raise OSError('Please store original data files in data/ directory')
-
-        if os.path.isfile('data/train.pkl'):
-            print("========== Extract data from pickle files ==========")
-            with open('data/train.pkl', 'rb') as f:
-                train_documents = pickle.load(f)
-            with open('data/test.pkl', 'rb') as f:
-                test_documents = pickle.load(f)
-            
-        else:
-            print("========== Parse data files ==========")
-            documents = self.extract_documents(data_dir)
-            train_documents, test_documents = [], []
-            
-            for document in documents:
-                if document.train:
-                    train_documents.append(document)
-                else: 
-                    test_documents.append(document)
-            
-            with open('data/train.pkl', 'wb') as f:
-                pickle.dump(train_documents, f)
-            with open('data/test.pkl', 'wb') as f:
-                pickle.dump(test_documents, f)
-                
-        return train_documents, test_documents
